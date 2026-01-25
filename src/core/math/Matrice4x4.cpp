@@ -1,23 +1,28 @@
 #include "Matrice4x4.h"
 
+// Constructeur par défaut : matrice identité
 Matrice4::Matrice4() {
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 4; j++)
             mat[i][j] = (i == j) ? 1.0f : 0.0f;
 };
 
+// Génération de la matrice identité directement
 Matrice4 Matrice4::Identity(){
     return Matrice4();
 };
 
-Matrice4 Matrice4::Translation(float x, float y,float z) {
-    Matrice4 mati = Identity();
-    mati.mat[0][3] = x;
-    mati.mat[1][3] = y;
-    mati.mat[2][3] = z;
-    return mati;
+//Matrice de translation
+Matrice4 Matrice4::Translation(float x, float y, float z)
+{
+    Matrice4 m = Identity();
+    m.mat[3][0] = x;
+    m.mat[3][1] = y;
+    m.mat[3][2] = z;
+    return m;
 }
 
+// Matrice de rotation autour des axes X
 Matrice4 Matrice4::RotationX(float angle) {
     Matrice4 mati = Identity();
     float cosA = std::cos(angle);
@@ -31,6 +36,7 @@ Matrice4 Matrice4::RotationX(float angle) {
     return mati;
 }
 
+// Matrice de rotation autour des axes Y
 Matrice4 Matrice4::RotationY(float angle) {
     Matrice4 mati = Identity();
     float cosA = std::cos(angle);
@@ -44,6 +50,7 @@ Matrice4 Matrice4::RotationY(float angle) {
     return mati;
 }
 
+// Matrice de rotation autour des axes Z
 Matrice4 Matrice4::RotationZ(float angle) {
     Matrice4 mati = Identity();
     float cosA = std::cos(angle);
@@ -57,6 +64,7 @@ Matrice4 Matrice4::RotationZ(float angle) {
     return mati;
 }
 
+// Matrice de mise à l'échelle
 Matrice4 Matrice4::Scaling(float sx, float sy, float sz) {
     Matrice4 mati = Identity(); 
     mati.mat[0][0] = sx;
@@ -65,18 +73,22 @@ Matrice4 Matrice4::Scaling(float sx, float sy, float sz) {
     return mati;
 }
 
+// Transformation du point homogène
 Vector3 Matrice4::TransformPoint(const Vector3& v){
-    point p(v, 1);
+    point p(v);
     p = p * *this;
-    return p;
+    return Vector3(p.x / p.w, p.y / p.w, p.z / p.w);
 }
 
+// Transformation de la direction (vecteur)
 Vector3 Matrice4::TransformDirection(const Vector3& v){
-    point p(v, 0);
+    point p;
+    p = point::Direction(v);
     p = p * *this;
-    return p;
+    return Vector3(p.x, p.y, p.z);
 }
 
+// calcul de la transposée
 Matrice4 Matrice4::Transpose() const{
     Matrice4 res;
     for (int i = 0; i < 4; i++) {
@@ -87,6 +99,7 @@ Matrice4 Matrice4::Transpose() const{
     return res;
 }
 
+// Calcul de l'inverse d'une matrice 4x4
 Matrice4 Matrice4::Inverse() const
 {
     Matrice4 inv;
@@ -233,42 +246,14 @@ Matrice4 Matrice4::Perspective(float fov, float aspect, float near, float far)
 
     p.mat[0][0] = 1.0f / (aspect * tanHalfFov);
     p.mat[1][1] = 1.0f / tanHalfFov;
-
     p.mat[2][2] = -(far + near) / (far - near);
-    p.mat[2][3] = -(2.0f * far * near) / (far - near);
-
-    p.mat[3][2] = -1.0f;
-
+    p.mat[2][3] = -1.0f;                           
+    p.mat[3][2] = -(2.0f * far * near) / (far - near);
+    
     return p;
 }
 
-Matrice4 Matrice4::lookAt(const Vector3& eye,const Vector3& target,const Vector3& up)
-{
-    Vector3 z = (eye - target).Normalisation();   // axe arrière
-    Vector3 x = up.Prodv(z).Normalisation();       // axe droite
-    Vector3 y = z.Prodv(x);                     // axe haut
-
-    Matrice4 view = Identity();
-
-    view.mat[0][0] = x.x;
-    view.mat[0][1] = x.y;
-    view.mat[0][2] = x.z;
-    view.mat[0][3] = -x.Dot(eye);
-
-    view.mat[1][0] = y.x;
-    view.mat[1][1] = y.y;
-    view.mat[1][2] = y.z;
-    view.mat[1][3] = -y.Dot(eye);
-
-    view.mat[2][0] = z.x;
-    view.mat[2][1] = z.y;
-    view.mat[2][2] = z.z;
-    view.mat[2][3] = -z.Dot(eye);
-
-    return view;
-}
-
-
+// Multiplication de deux matrices 4x4
 Matrice4 Matrice4::operator*(const Matrice4& other) const {
     Matrice4 result;
     
@@ -284,17 +269,14 @@ Matrice4 Matrice4::operator*(const Matrice4& other) const {
     return result;
 }
 
-point point::operator*(const Matrice4& m) const{ 
-    point p1;   
-
-    for (int i=0; i < 4; i++)
-    {
-        for (int j = 0; j < 4; j++)
-        {
-            p1.ph[i] += m.mat[i][j] * ph[j];
-        }
-    }
-
-    p1.update();
-    return p1;
+// Multiplication d'un point homogène par une matrice 4x4
+point point::operator*(const Matrice4& m) const
+{
+    point r;
+    // multiplication point * matrice (row vector × matrix)
+    r.x = m.mat[0][0] * x + m.mat[1][0] * y + m.mat[2][0] * z + m.mat[3][0] * w;
+    r.y = m.mat[0][1] * x + m.mat[1][1] * y + m.mat[2][1] * z + m.mat[3][1] * w;
+    r.z = m.mat[0][2] * x + m.mat[1][2] * y + m.mat[2][2] * z + m.mat[3][2] * w;
+    r.w = m.mat[0][3] * x + m.mat[1][3] * y + m.mat[2][3] * z + m.mat[3][3] * w;
+    return r;
 }

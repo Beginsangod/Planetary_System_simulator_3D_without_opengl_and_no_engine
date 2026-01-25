@@ -6,7 +6,7 @@ class Matrice4 {
         float mat[4][4];
 
         Matrice4();
-        Matrice4(const Matrice4& other);
+        // Matrice4(const Matrice4& other);
 
         // Matrice identité
         static Matrice4 Identity();
@@ -19,7 +19,6 @@ class Matrice4 {
         static Matrice4 RotationZ(float angle);
 
         //Projection ==/== Caméra
-        static Matrice4 lookAt( const Vector3& eye, const Vector3& target, const Vector3& up);
         static Matrice4 Perspective( float fov, float aspect, float near, float far);
 
         //Application
@@ -34,17 +33,28 @@ class Matrice4 {
         Matrice4 operator*(const Matrice4& other) const;
 };
 
-// classe point homogène
-class point: public Vector3{
-    public:
-        float ph[4];
+// Définition de la classe point homogène
+class point {
+public:
+    float x, y, z, w;
 
-        point(){};
-        point(Vector3 v, int n){ ph[0] = x; ph[1] = y; ph[2] = z; ph[3] = n; }
-        point(const point& p) {}
+    // Constructeur par défaut
+    point() : x(0), y(0), z(0), w(1) {}
 
-        //Appliqué les changements
-        point update(){ x = ph[0]; y = ph[1]; z = ph[2]; }
-        
-        point operator*(const Matrice4& p) const;
+    // Point (w = 1)
+    point(const Vector3& v) : x(v.x), y(v.y), z(v.z), w(1.0f) {}
+
+    // Direction (w = 0)
+    static point Direction(const Vector3& v) {
+        point p;
+        p.x = v.x;
+        p.y = v.y;
+        p.z = v.z;
+        p.w = 0.0f;
+        return p;
+    }
+
+    // Multiplication d'un point homogène par une matrice 4x4
+    point operator*(const Matrice4& m) const;
 };
+    

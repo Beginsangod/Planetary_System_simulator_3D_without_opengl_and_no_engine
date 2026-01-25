@@ -4,6 +4,7 @@
 
 using namespace std;
 
+//classe fenetre
 class Window {
     private:
         SDL_Window* window = nullptr;
@@ -22,4 +23,9 @@ class Window {
         void ClearWindow();
         void Present();
         void ExitError(const std::string& message);
+
+        //Getters
+        SDL_Renderer* GetSDLRenderer() const { return renderer; }
+        int GetWidth() const { return wwidth; }
+        int GetHeight() const { return wheight; }
 };
