@@ -22,8 +22,8 @@ class Matrice4 {
         static Matrice4 Perspective( float fov, float aspect, float near, float far);
 
         //Application
-        Vector3 TransformPoint(const Vector3& v);
-        Vector3 TransformDirection(const Vector3& v);
+        Vector3 TransformPoint(const Vector3& v) const;
+        Vector3 TransformDirection(const Vector3& v) const;
 
         // Opération matricielle
         Matrice4 Transpose() const;

@@ -21,4 +21,6 @@ class App {
         void Run();
         void Exit();
         void Render();
+        void HandleCameraInput(float deltaTime);
+        void HandleInputCommand();
 };

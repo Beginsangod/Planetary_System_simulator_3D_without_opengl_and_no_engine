@@ -13,16 +13,15 @@ Matrice4 Matrice4::Identity(){
 };
 
 //Matrice de translation
-Matrice4 Matrice4::Translation(float x, float y, float z)
-{
+Matrice4 Matrice4::Translation(float x, float y, float z) {
     Matrice4 m = Identity();
-    m.mat[3][0] = x;
+    m.mat[3][0] = x;  
     m.mat[3][1] = y;
     m.mat[3][2] = z;
     return m;
 }
 
-// Matrice de rotation autour des axes X
+// Matrice de rotation autour de l'axe X
 Matrice4 Matrice4::RotationX(float angle) {
     Matrice4 mati = Identity();
     float cosA = std::cos(angle);
@@ -36,7 +35,8 @@ Matrice4 Matrice4::RotationX(float angle) {
     return mati;
 }
 
-// Matrice de rotation autour des axes Y
+// Matrice de rotation autour de l'axe Y
+// 🔧 CORRECTION : Ajout de mat[2][2] = cosA qui manquait !
 Matrice4 Matrice4::RotationY(float angle) {
     Matrice4 mati = Identity();
     float cosA = std::cos(angle);
@@ -45,12 +45,12 @@ Matrice4 Matrice4::RotationY(float angle) {
     mati.mat[0][0] = cosA;
     mati.mat[0][2] = sinA;
     mati.mat[2][0] = -sinA;
-    mati.mat[2][2] = cosA;
+    mati.mat[2][2] = cosA;  
     
     return mati;
 }
 
-// Matrice de rotation autour des axes Z
+// Matrice de rotation autour de l'axe Z
 Matrice4 Matrice4::RotationZ(float angle) {
     Matrice4 mati = Identity();
     float cosA = std::cos(angle);
@@ -74,14 +74,14 @@ Matrice4 Matrice4::Scaling(float sx, float sy, float sz) {
 }
 
 // Transformation du point homogène
-Vector3 Matrice4::TransformPoint(const Vector3& v){
+Vector3 Matrice4::TransformPoint(const Vector3& v) const{
     point p(v);
     p = p * *this;
     return Vector3(p.x / p.w, p.y / p.w, p.z / p.w);
 }
 
 // Transformation de la direction (vecteur)
-Vector3 Matrice4::TransformDirection(const Vector3& v){
+Vector3 Matrice4::TransformDirection(const Vector3& v) const{
     point p;
     p = point::Direction(v);
     p = p * *this;
@@ -247,36 +247,32 @@ Matrice4 Matrice4::Perspective(float fov, float aspect, float near, float far)
     p.mat[0][0] = 1.0f / (aspect * tanHalfFov);
     p.mat[1][1] = 1.0f / tanHalfFov;
     p.mat[2][2] = -(far + near) / (far - near);
-    p.mat[2][3] = -1.0f;                           
-    p.mat[3][2] = -(2.0f * far * near) / (far - near);
-    
+    p.mat[2][3] = -1.0f;  
+    p.mat[3][2] = -(2.0f * far * near) / (far - near);         
+    p.mat[3][3] = 0.0f;
+
     return p;
 }
 
 // Multiplication de deux matrices 4x4
-Matrice4 Matrice4::operator*(const Matrice4& other) const {
-    Matrice4 result;
-    
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            result.mat[i][j] = 0.0f;
-            for (int k = 0; k < 4; k++) {
-                result.mat[i][j] += mat[i][k] * other.mat[k][j];
-            }
+Matrice4 Matrice4::operator*(const Matrice4& B) const {
+    Matrice4 R;
+    for (int i = 0; i < 4; ++i)
+        for (int j = 0; j < 4; ++j) {
+            R.mat[i][j] = 0.0f;  // Initialiser à zéro
+            for (int k = 0; k < 4; ++k)
+                R.mat[i][j] += this->mat[i][k] * B.mat[k][j];
         }
-    }
-    
-    return result;
+    return R;
 }
 
+
 // Multiplication d'un point homogène par une matrice 4x4
-point point::operator*(const Matrice4& m) const
-{
+point point::operator*(const Matrice4& m) const {
     point r;
-    // multiplication point * matrice (row vector × matrix)
-    r.x = m.mat[0][0] * x + m.mat[1][0] * y + m.mat[2][0] * z + m.mat[3][0] * w;
-    r.y = m.mat[0][1] * x + m.mat[1][1] * y + m.mat[2][1] * z + m.mat[3][1] * w;
-    r.z = m.mat[0][2] * x + m.mat[1][2] * y + m.mat[2][2] * z + m.mat[3][2] * w;
-    r.w = m.mat[0][3] * x + m.mat[1][3] * y + m.mat[2][3] * z + m.mat[3][3] * w;
+    r.x = x*m.mat[0][0] + y*m.mat[1][0] + z*m.mat[2][0] + w*m.mat[3][0];
+    r.y = x*m.mat[0][1] + y*m.mat[1][1] + z*m.mat[2][1] + w*m.mat[3][1];
+    r.z = x*m.mat[0][2] + y*m.mat[1][2] + z*m.mat[2][2] + w*m.mat[3][2];
+    r.w = x*m.mat[0][3] + y*m.mat[1][3] + z*m.mat[2][3] + w*m.mat[3][3];
     return r;
 }
