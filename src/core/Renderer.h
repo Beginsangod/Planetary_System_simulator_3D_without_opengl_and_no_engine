@@ -26,6 +26,7 @@ class Window {
 
         //Getters
         SDL_Renderer* GetSDLRenderer() const { return renderer; }
+        SDL_Window* GetSDLWindow() const { return window; }
         int GetWidth() const { return wwidth; }
         int GetHeight() const { return wheight; }
 };

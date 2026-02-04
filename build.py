@@ -9,7 +9,7 @@ class Builder:
         self.platform = sys.platform
         self.compiler = "clang++"
         self.flags = ["-std=c++17", "-O2", "-g"]
-        #self.imgui_dir = "ThirdParty/imgui"
+        self.imgui_dir = "ThirdParty/imgui"
         self.sources = self.find_sources()
         self.includes = self.get_includes()
         self.libraries = self.get_libraries()
@@ -47,9 +47,8 @@ class Builder:
         return [
             r"-IC:\msys64\mingw64\include",
             "-I.",
-            #"-I" + self.imgui_dir,
-            #"-I" + self.imgui_dir + "/backends",
-            #"-I" + self.imgui_dir + "/backends/vu"
+            "-I" + self.imgui_dir,
+            "-I" + self.imgui_dir + "/backends"
         ]
     
     def get_libraries(self):

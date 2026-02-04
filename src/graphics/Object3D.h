@@ -1,8 +1,10 @@
 #pragma once
 #include <vector>
+#include <memory>
 #include "../core/math/Vector2.h"
 #include "../core/math/Vector3.h"
 #include "../core/math/Matrice4x4.h"
+#include "Material.h"
 
 // Définition de la structure Vertex(point en 3d) 
 struct Vertex {
@@ -32,18 +34,23 @@ struct Mesh {
 // Constructeur de forme d'objet 3D
 class MeshBuilder {
     public:
+        // Formes basiques
         static Mesh CreateTriangle();
         static Mesh CreateQuad(float width, float height);
         static Mesh CreateCube(float size);
+        
+        // Sphère avec couleur personnalisable (coeu moteur)
+        static Mesh CreateSphere(float radius, int sectorCount, int stackCount, const Vector3& color = Vector3(0.8f, 0.8f, 1.0f));
+        
+        // Sol
         static Mesh CreatePlane(float width, float height, int subdivisionsWidth, int subdivisionsHeight);
-        static Mesh CreateSphere(float radius, int sectorCount, int stackCount);
 };
 
 // Définition de la classe Transform (position, rotation, échelle)
 class Transform {
     public:
         Vector3 position;
-        Vector3 rotation;   // angles d’Euler (rad)
+        Vector3 rotation;   // angles d'Euler (rad)
         Vector3 scale;
 
         Transform();
@@ -56,13 +63,43 @@ class Object3D {
     public:
         Mesh mesh;
         Transform transform;
+        Material material;  // Matériau de l'objet
         int id;
 
-        Object3D(const Mesh& mesh, const Vector3& position=Vector3::Zero) : mesh(mesh), transform(position) {}
+        // Constructeur avec mesh uniquement (matériau par défaut)
+        Object3D(const Vector3& position=Vector3::Zero) : transform(position), material(Material::White()) {}
+
+        // Constructeur avec mesh uniquement (matériau par défaut)
+        Object3D(const Mesh& mesh, const Vector3& position=Vector3::Zero) : mesh(mesh), transform(position), material(Material::White()) {}
+        
+        // Constructeur avec matériau
+        Object3D(const Mesh& mesh, const Material& mat, const Vector3& position=Vector3::Zero) : mesh(mesh), transform(position), material(mat) {}
+
+        virtual ~Object3D() = default;
+
+        virtual std::unique_ptr<Object3D> clone() const {
+            return std::make_unique<Object3D>(*this);
+        }
 
         void Translate(const Vector3& t);
         void Rotate(const Vector3& r);
         void Scale(const Vector3& s);
+        
+        // Méthodes pour le matériau
+        void SetMaterial(const Material& mat) { material = mat; }
+        Material& GetMaterial() { return material; }
+        const Material& GetMaterial() const { return material; }
+        
+        // Méthodes pratiques pour l'émission
+        void SetEmissive(bool emissive, float intensity = 1.0f) {
+            material.isEmissive = emissive;
+            material.emissiveIntensity = intensity;
+        }
+        
+        void SetColor(const Vector3& color) {
+            material.albedoColor = color;
+            material.emissiveColor = color;
+        }
 
         bool operator==(const Object3D& other) const {
             return id == other.id;

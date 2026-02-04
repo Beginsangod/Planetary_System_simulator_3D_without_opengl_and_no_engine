@@ -1,4 +1,5 @@
 #include "Object3D.h"
+#include <cmath>
 
 // Constructeur par défaut du Transform
 Transform::Transform()
@@ -50,6 +51,127 @@ Mesh MeshBuilder::CreateQuad(float width, float height) {
         0, 1, 2,
         0, 2, 3
     };
+    return mesh;
+}
+
+// Création d'une SPHÈRE avec couleur personnalisable
+Mesh MeshBuilder::CreateSphere(float radius, int sectorCount, int stackCount, const Vector3& color) {
+    Mesh mesh;
+    
+    // Validation des paramètres
+    if (sectorCount < 3) sectorCount = 3;
+    if (stackCount < 2) stackCount = 2;
+    
+    const float PI = 3.14159265358979323846f;
+    
+    // Génération des vertices
+    for (int stack = 0; stack <= stackCount; ++stack) {
+        // Angle vertical (de 0 à PI, du pôle nord au pôle sud)
+        float stackAngle = PI / 2.0f - stack * PI / stackCount;  // -PI/2 à PI/2
+        float xy = radius * std::cos(stackAngle);    // r * cos(phi)
+        float z = radius * std::sin(stackAngle);     // r * sin(phi)
+        
+        for (int sector = 0; sector <= sectorCount; ++sector) {
+            // Angle horizontal (de 0 à 2PI)
+            float sectorAngle = sector * 2.0f * PI / sectorCount;
+            
+            // Position du vertex
+            float x = xy * std::cos(sectorAngle);
+            float y = xy * std::sin(sectorAngle);
+            Vector3 position(x, y, z);
+            
+            // Normale (pour une sphère centrée à l'origine, c'est la position normalisée)
+            Vector3 normal = position.Normalisation();
+            
+            // Utiliser la couleur fournie en paramètre
+            mesh.vertices.push_back({position, normal, color});
+        }
+    }
+    
+    // Génération des indices
+    for (int stack = 0; stack < stackCount; ++stack) {
+        int k1 = stack * (sectorCount + 1);      // Début de la stack actuelle
+        int k2 = k1 + sectorCount + 1;           // Début de la stack suivante
+        
+        for (int sector = 0; sector < sectorCount; ++sector, ++k1, ++k2) {
+            // Deux triangles par quad
+            // k1 --- k1+1
+            //  |  \   |
+            // k2 --- k2+1
+            
+            // Premier triangle (k1, k2, k1+1)
+            if (stack != 0) {  // Pas de triangle au pôle nord (dégénéré)
+                mesh.indices.push_back(k1);
+                mesh.indices.push_back(k2);
+                mesh.indices.push_back(k1 + 1);
+            }
+            
+            // Deuxième triangle (k1+1, k2, k2+1)
+            if (stack != stackCount - 1) {  // Pas de triangle au pôle sud (dégénéré)
+                mesh.indices.push_back(k1 + 1);
+                mesh.indices.push_back(k2);
+                mesh.indices.push_back(k2 + 1);
+            }
+        }
+    }
+    
+    return mesh;
+}
+
+// Création d'un plan subdivisé pour sol
+Mesh MeshBuilder::CreatePlane(float width, float height, int subdivisionsWidth, int subdivisionsHeight) {
+    Mesh mesh;
+    
+    // Vérification des subdivisions minimales
+    if (subdivisionsWidth < 1) subdivisionsWidth = 1;
+    if (subdivisionsHeight < 1) subdivisionsHeight = 1;
+    
+    float halfWidth = width * 0.5f;
+    float halfHeight = height * 0.5f;
+    
+    // Calcul du pas de grille
+    float stepX = width / subdivisionsWidth;
+    float stepZ = height / subdivisionsHeight;
+    
+    // Génération des vertices
+    for (int z = 0; z <= subdivisionsHeight; ++z) {
+        for (int x = 0; x <= subdivisionsWidth; ++x) {
+            float posX = -halfWidth + x * stepX;
+            float posZ = -halfHeight + z * stepZ;
+            
+            // Alternance de couleurs pour effet damier
+            bool isEven = ((x + z) % 2 == 0);
+            Vector3 color = isEven ? Vector3(0.8f, 0.8f, 0.8f) : Vector3(0.6f, 0.6f, 0.6f);
+            
+            // Le plan est dans le plan XZ avec Y=0, normale pointant vers +Y
+            mesh.vertices.push_back({
+                Vector3(posX, 0.0f, posZ),
+                Vector3(0.0f, 1.0f, 0.0f),  // Normale vers le haut
+                color
+            });
+        }
+    }
+    
+    // Génération des indices (2 triangles par carré)
+    for (int z = 0; z < subdivisionsHeight; ++z) {
+        for (int x = 0; x < subdivisionsWidth; ++x) {
+            int topLeft = z * (subdivisionsWidth + 1) + x;
+            int topRight = topLeft + 1;
+            int bottomLeft = (z + 1) * (subdivisionsWidth + 1) + x;
+            int bottomRight = bottomLeft + 1;
+            
+            // Premier triangle (sens anti-horaire vu de dessus)
+            mesh.indices.push_back(topLeft);
+            mesh.indices.push_back(bottomLeft);
+            mesh.indices.push_back(topRight);
+            
+            // Deuxième triangle
+            mesh.indices.push_back(topRight);
+            mesh.indices.push_back(bottomLeft);
+            mesh.indices.push_back(bottomRight);
+        }
+    }
+    
     return mesh;
 }
 
@@ -158,133 +280,6 @@ Mesh MeshBuilder::CreateCube(float size) {
     // Face bas
     mesh.indices.push_back(20); mesh.indices.push_back(21); mesh.indices.push_back(22);
     mesh.indices.push_back(20); mesh.indices.push_back(22); mesh.indices.push_back(23);
-    
-    return mesh;
-}
-
-// création mesh plane 
-Mesh MeshBuilder::CreatePlane(float width, float height, int subdivisionsWidth, int subdivisionsHeight) {
-    Mesh mesh;
-    
-    // Vérification des subdivisions minimales
-    if (subdivisionsWidth < 1) subdivisionsWidth = 1;
-    if (subdivisionsHeight < 1) subdivisionsHeight = 1;
-    
-    float halfWidth = width * 0.5f;
-    float halfHeight = height * 0.5f;
-    
-    // Calcul du pas de grille
-    float stepX = width / subdivisionsWidth;
-    float stepZ = height / subdivisionsHeight;
-    
-    // Génération des vertices
-    for (int z = 0; z <= subdivisionsHeight; ++z) {
-        for (int x = 0; x <= subdivisionsWidth; ++x) {
-            float posX = -halfWidth + x * stepX;
-            float posZ = -halfHeight + z * stepZ;
-            
-            // Alternance de couleurs pour effet damier
-            float u = (float)x / subdivisionsWidth;
-            float v = (float)z / subdivisionsHeight;
-            bool isEven = ((x + z) % 2 == 0);
-            Vector3 color = isEven ? Vector3(0.8f, 0.8f, 0.8f) : Vector3(0.6f, 0.6f, 0.6f);
-            
-            // Le plan est dans le plan XZ avec Y=0, normale pointant vers +Y
-            mesh.vertices.push_back({
-                Vector3(posX, 0.0f, posZ),
-                Vector3(0.0f, 1.0f, 0.0f),  // Normale vers le haut
-                color
-            });
-        }
-    }
-    
-    // Génération des indices (2 triangles par carré)
-    for (int z = 0; z < subdivisionsHeight; ++z) {
-        for (int x = 0; x < subdivisionsWidth; ++x) {
-            int topLeft = z * (subdivisionsWidth + 1) + x;
-            int topRight = topLeft + 1;
-            int bottomLeft = (z + 1) * (subdivisionsWidth + 1) + x;
-            int bottomRight = bottomLeft + 1;
-            
-            // Premier triangle (sens anti-horaire vu de dessus)
-            mesh.indices.push_back(topLeft);
-            mesh.indices.push_back(bottomLeft);
-            mesh.indices.push_back(topRight);
-            
-            // Deuxième triangle
-            mesh.indices.push_back(topRight);
-            mesh.indices.push_back(bottomLeft);
-            mesh.indices.push_back(bottomRight);
-        }
-    }
-    
-    return mesh;
-}
-
-// création sphere
-Mesh MeshBuilder::CreateSphere(float radius, int sectorCount, int stackCount) {
-    Mesh mesh;
-    
-    // Validation des paramètres
-    if (sectorCount < 3) sectorCount = 3;
-    if (stackCount < 2) stackCount = 2;
-    
-    const float PI = 3.14159265358979323846f;
-    
-    // Génération des vertices
-    for (int stack = 0; stack <= stackCount; ++stack) {
-        // Angle vertical (de 0 à PI, du pôle nord au pôle sud)
-        float stackAngle = PI / 2.0f - stack * PI / stackCount;  // -PI/2 à PI/2
-        float xy = radius * std::cos(stackAngle);    // r * cos(phi)
-        float z = radius * std::sin(stackAngle);     // r * sin(phi)
-        
-        for (int sector = 0; sector <= sectorCount; ++sector) {
-            // Angle horizontal (de 0 à 2PI)
-            float sectorAngle = sector * 2.0f * PI / sectorCount;
-            
-            // Position du vertex
-            float x = xy * std::cos(sectorAngle);
-            float y = xy * std::sin(sectorAngle);
-            Vector3 position(x, y, z);
-            
-            // Normale (pour une sphère centrée à l'origine, c'est la position normalisée)
-            Vector3 normal = position.Normalisation();
-            
-            // Couleur basée sur la position (optionnel, pour debug visuel)
-            float u = static_cast<float>(sector) / sectorCount;
-            float v = static_cast<float>(stack) / stackCount;
-            Vector3 color(0.8f + 0.2f * u, 0.8f + 0.2f * v, 1.0f);
-            
-            mesh.vertices.push_back({position, normal, color});
-        }
-    }
-    
-    // Génération des indices
-    for (int stack = 0; stack < stackCount; ++stack) {
-        int k1 = stack * (sectorCount + 1);      // Début de la stack actuelle
-        int k2 = k1 + sectorCount + 1;           // Début de la stack suivante
-        
-        for (int sector = 0; sector < sectorCount; ++sector, ++k1, ++k2) {
-            // Deux triangles par quad
-            // k1 --- k1+1
-            //  |  \   |
-            // k2 --- k2+1
-            
-            // Premier triangle (k1, k2, k1+1)
-            if (stack != 0) {  // Pas de triangle au pôle nord (dégénéré)
-                mesh.indices.push_back(k1);
-                mesh.indices.push_back(k2);
-                mesh.indices.push_back(k1 + 1);
-            }
-            
-            // Deuxième triangle (k1+1, k2, k2+1)
-            if (stack != stackCount - 1) {  // Pas de triangle au pôle sud (dégénéré)
-                mesh.indices.push_back(k1 + 1);
-                mesh.indices.push_back(k2);
-                mesh.indices.push_back(k2 + 1);
-            }
-        }
-    }
     
     return mesh;
 }

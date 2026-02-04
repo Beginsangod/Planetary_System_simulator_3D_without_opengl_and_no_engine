@@ -8,22 +8,22 @@ Camera::Camera():
     fov(60), 
     aspect(1.77f), 
     near(0.1f), 
-    far(100.0f), 
+    far(2000.0f), 
     moveSpeed(5.0f), 
-    sprintMultiplier(2.0f),
+    sprintMultiplier(3.0f),
     mouseSensibility(0.001f), 
-    yaw(0.0f), 
-    pitch(0.0f), 
+    yaw(3.14159265f), 
+    pitch(0.6f), 
     zoomSpeed(5.0f),
     mode(CameraMode::FREE_FLY),
-    groundHeight(1.7f)  // Hauteur d'un humain (~1.7m)
+    groundHeight(3.0f)  // Hauteur d'un humain de (3m)
 {
-    transform.position = Vector3(0, groundHeight, 5);
+    transform.position = Vector3(0, 200, -100);
     transform.rotation = Vector3::Zero;
 };
 
 // Calcul de la matrice de vue
-Matrice4 Camera::GetViewMatrix() {
+Matrice4 Camera::GetViewMatrix() const {
     
     Matrice4 T = Matrice4::Translation(-transform.position.x, -transform.position.y, -transform.position.z);
     Matrice4 Rx = Matrice4::RotationX(-pitch);
@@ -51,7 +51,7 @@ void Camera::LookAt(Object3D obj) {
 }
 
 // Calcul de la matrice de projection
-Matrice4 Camera::GetProjectionMatrix() {
+Matrice4 Camera::GetProjectionMatrix() const {
     Matrice4 projectionMatrix;
 
     // Calcul de la matrice de projection perspective
@@ -64,18 +64,18 @@ Matrice4 Camera::GetProjectionMatrix() {
 Vector3 Camera::GetForward() const {
     // En mode GROUND_WALK, on ignore le pitch pour le déplacement
     if (mode == CameraMode::GROUND_WALK) {
-        Vector3 forward(-std::sin(yaw), 0.0f, -std::cos(yaw));
+        Vector3 forward(-std::sin(yaw) * std::cos(pitch), 0.0f, -std::cos(yaw));
         return forward.Normalisation();
     } else {
-        Vector3 forward(-std::sin(yaw), -std::sin(pitch), -std::cos(yaw) * std::cos(pitch));
+        Vector3 forward(-std::sin(yaw) * std::cos(pitch), -std::sin(pitch), -std::cos(yaw) * std::cos(pitch));
         return forward.Normalisation();
     }
 }
 
 // Obtenir le vecteur right
 Vector3 Camera::GetRight() const {
-    Vector3 forward = GetForward();
-    return forward.Prodv(Vector3::Up).Normalisation();
+    Vector3 right(std::cos(yaw), 0.0f, -std::sin(yaw));
+    return right;
 }
 
 // Obtenir le vecteur up
@@ -119,10 +119,10 @@ void Camera::ProcessKeyboard(float deltaTime) {
     
     // Déplacement gauche/droite (Q/D ou A/D)
     if (Keyboard::IsKeyDown(KeyCode::D)) {
-        transform.position -= right * velocity;
+        transform.position += right * velocity;
     }
     if (Keyboard::IsKeyDown(KeyCode::A) || Keyboard::IsKeyDown(KeyCode::Q)) {
-        transform.position += right * velocity;
+        transform.position -= right * velocity;
     }
     
     // Déplacement vertical (Espace/Ctrl)

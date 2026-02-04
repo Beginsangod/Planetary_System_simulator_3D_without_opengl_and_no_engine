@@ -1,6 +1,7 @@
 #pragma once
 #include <SDL3/SDL.h>
 #include "scene.h"
+#include "LightSource.h"
 
 // Énumération pour les modes de rendu
 enum class RenderMode {
@@ -20,9 +21,12 @@ class Renderer3d {
         SDL_Texture* texture;
         SDL_Renderer* renderer;
         RenderMode renderMode;  // Mode de rendu actuel
+        std::vector<LightSource> lights;  // Lumières actives de la scène
+        bool dynamicLightingEnabled;      // Activer/désactiver l'éclairage dynamique
+        int maxActiveLights;               // Nombre maximum de lumières actives
 
     public:
-        Renderer3d(int w, int h, SDL_Renderer* renderer) : width(w), height(h), renderer(renderer), renderMode(RenderMode::FILLED) { 
+        Renderer3d(int w, int h, SDL_Renderer* renderer) : width(w), height(h), renderer(renderer), renderMode(RenderMode::FILLED), dynamicLightingEnabled(true), maxActiveLights(5) { 
             texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, width, height);
         }
         ~Renderer3d(){if(texture) SDL_DestroyTexture(texture);};
@@ -34,12 +38,12 @@ class Renderer3d {
         /* pipelines de rendu */
         void InitializeBuffers();
         void Clear(const Vector3& color);
-        void RenderScene(Scene scene);
+        void RenderScene(Scene& scene);
         void DrawObject(const Object3D& obj, Matrice4 Model, Matrice4 View, Matrice4 Proj);
-        void DrawMesh(const Mesh& mesh, const Matrice4& Model, const Matrice4& View, const Matrice4& Proj);  
+        void DrawMesh(const Mesh& mesh, const Material& material, const Matrice4& Model, const Matrice4& View, const Matrice4& Proj);  
         void TransformVertex(const Vertex& inVertex, VertexTransformed& outVertex, const Matrice4& MVP, const Matrice4& MV);     
         float Trianglecheck(const VertexTransformed& v0, const VertexTransformed& v1, const VertexTransformed& v2);
-        void RasterizeTriangle(const VertexTransformed& v0, const VertexTransformed& v1, const VertexTransformed& v2, bool isFrontFacing);
+        void RasterizeTriangle(const VertexTransformed& v0, const VertexTransformed& v1, const VertexTransformed& v2, bool isFrontFacing, const Material& material, const Vector3& worldPos0, const Vector3& worldPos1, const Vector3& worldPos2);
         void BoundBox(const VertexTransformed& v0, const VertexTransformed& v1, const VertexTransformed& v2, int& minX, int& minY, int& maxX, int& maxY);
         Vector3 BarycentricCoordinates(const Vector2& p, const VertexTransformed& v0, const VertexTransformed& v1, const VertexTransformed& v2);
         bool isInTriangle(const Vector2& p, const VertexTransformed& v0, const VertexTransformed& v1, const VertexTransformed& v2);
@@ -50,4 +54,14 @@ class Renderer3d {
         // Nouvelles méthodes pour le rendu wireframe et points
         void DrawLine(const VertexTransformed& v0, const VertexTransformed& v1, const Vector3& color);
         void DrawPoint(const VertexTransformed& v, const Vector3& color, int size = 3);
+
+        // GESTION DE L'ÉCLAIRAGE 
+        void SetDynamicLighting(bool enabled) { dynamicLightingEnabled = enabled; }
+        bool IsDynamicLightingEnabled() const { return dynamicLightingEnabled; }
+        void SetMaxActiveLights(int max) { maxActiveLights = max; }
+        int GetMaxActiveLights() const { return maxActiveLights; }
+        void SetLights(const std::vector<LightSource>& sceneLights) { lights = sceneLights; }
+        const std::vector<LightSource>& GetLights() const { return lights; }
+        // Calcul de l'éclairage dynamique pour un point donné
+        Vector3 CalculateDynamicLighting( const Vector3& worldPosition, const Vector3& normal, const Vector3& baseColor);
 };

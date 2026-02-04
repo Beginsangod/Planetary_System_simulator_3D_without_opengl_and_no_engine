@@ -2,6 +2,9 @@
 #include "Renderer.h"
 #include "Event/handleEvent.h"
 #include "../graphics/Renderer3d.h"
+#include "../physics/MotorPhysics.h"
+#include "../Simulation/SimulationManager.h"
+#include "UI.h"
 
 //classe application principale
 class App {
@@ -9,8 +12,11 @@ class App {
         Window window;
         bool isRunning;
         bool isInitialized;
-        Scene scene;
+        World mworld;
+        SimulationManager* SM = nullptr; // Gère les Scènes
+        MotorPhysics* motorPhysics = nullptr;
         Renderer3d* renderer3d = nullptr;
+        UI* ui = nullptr;
         
     public:
         App(const std::string& title, int width, int height);

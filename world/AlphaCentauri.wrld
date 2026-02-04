@@ -1,0 +1,26 @@
+World {
+    // ═══════════════════════════════════════════════════════════════
+    // ALPHA CENTAURI - SYSTÈME TRIPLE
+    // ═══════════════════════════════════════════════════════════════
+    
+    // ALPHA CENTAURI A - Étoile principale (naine jaune)
+    Star(pos(-15, 0, 0), 1100.0, 7.5, 110.0, 5790k)
+    
+    // ALPHA CENTAURI B - Étoile secondaire (naine orange)
+    Star(pos(15, 0, 0), 907.0, 6.2, 75.0, 5260k)
+    
+    // PROXIMA CENTAURI - Naine rouge (éloignée)
+    Star(pos(0, -200, 0), 123.0, 2.0, 0.5, 3042k)
+    
+    // PROXIMA b - Exoplanète (zone habitable)
+    Planet(pos(8, -200, 0), color(0.4, 0.3, 0.25), RotSpeed(0, 0.5, 0), 1.27, 2.6, 0.0)
+    
+    // PROXIMA d - Candidate (2022)
+    Planet(pos(4, -200, 0), color(0.5, 0.4, 0.35), RotSpeed(0, 0.8, 0), 0.26, 1.4, 0.0)
+    
+    // ALPHA CENTAURI Bb - Hypothétique
+    Planet(pos(22, 0, 0), color(0.6, 0.35, 0.2), RotSpeed(0, 0.6, 0), 1.13, 2.5, 15.0)
+    
+    // STATION D'OBSERVATION
+    Satellite(pos(50, -100, 150), color(0.8, 0.8, 0.9), 0.001, 0.5)
+}

@@ -7,7 +7,7 @@ App::App(const std::string& title, int width, int height) :
     isRunning(false),
     isInitialized(false) {};
 
-    // destructeur application principale
+// destructeur application principale
 App::~App(){
     Close();
 }
@@ -20,17 +20,40 @@ bool App::Initialisation(){
     }
 
     isInitialized = true;
-    std::cout<< "initialisation du moteur3D...."<<std::endl;
+    std::cout << "Initialisation du manager de Scène" <<std::endl;
+    SM = new SimulationManager(mworld);
+    std::cout<< "Initialisation du moteur3D...."<<std::endl;
     renderer3d = new Renderer3d(window.GetWidth(), window.GetHeight(), window.GetSDLRenderer());
     renderer3d->InitializeBuffers();
-    std::cout<< "initialisation du simulateur terminé"<<std::endl;
+    std::cout<< "Initialisation du moteur de physique..." <<std::endl;
+    motorPhysics = new MotorPhysics(mworld);
+    std::cout<<"Initialisation du User Interface..." <<std::endl;
+    ui = new UI(window.GetSDLRenderer(), window.GetSDLWindow(), SM, &mworld);
+    ui->UpdateWindowSize(window.GetWidth(), window.GetHeight());
+    std::cout<< "Initialisation du simulateur terminé"<<std::endl;
     return true;
 }
 
 //fermeture application principale
 void App::Close(){
+    if (ui) {
+        delete ui;
+        ui = nullptr;
+    }
+    if (renderer3d) {
+        delete renderer3d;
+        renderer3d = nullptr;
+    } 
+    if (motorPhysics) {
+        delete motorPhysics;
+        motorPhysics = nullptr;
+    }
+    if (SM) {
+        delete SM;
+        SM = nullptr;
+    }
     window.CloseWindow();
-    std::cout<<"fermeture du simulateur"<<std::endl;
+    std::cout<<"🚩 Fermeture du simulateur"<<std::endl;
 }
 
 // boucle principale
@@ -42,10 +65,9 @@ void App::Run(){
     
     isRunning = true;
     std::cout << "🚀 Simulateur démarré" << std::endl;
-    scene.SetCameraAspectRatio(static_cast<float>(window.GetWidth()) / static_cast<float>(window.GetHeight()));
-    Camera& camera = scene.GetCamera();
-    camera.SetMode(CameraMode::GROUND_WALK); // Mode par défaut
-    scene.addSphere(1.0f, 32, 64, Vector3(0, 0, 0)); // Ajout d'une sphère à la scène pour test
+    mworld.SetCameraAspectRatio(static_cast<float>(window.GetWidth()) / static_cast<float>(window.GetHeight()));
+    Camera& camera = mworld.GetCamera();
+    camera.SetMode(CameraMode::FREE_FLY);
     Uint64 lastTime = SDL_GetTicks();
     while(isRunning){
         Uint64 currentTime = SDL_GetTicks();
@@ -57,6 +79,9 @@ void App::Run(){
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
+
+            ui->ProcessEvent(&event);
+
             switch (event.type) {
                 case SDL_EVENT_QUIT:
                     Exit();
@@ -65,19 +90,26 @@ void App::Run(){
                     break;
             }
         }
+
+        // Calcul du moteur physique
+        motorPhysics->Update(deltaTime);
+
         // Gérer les inputs de la caméra
         HandleCameraInput(deltaTime);  
         
         // Inputs du moteur
         HandleInputCommand();
 
+        ui->NewFrame();
+        ui->UpdateUI();
+
         Render();
     }
 }
 
-// NOUVELLE MÉTHODE : Gérer les inputs de la caméra
+// Gérer les inputs de la caméra
 void App::HandleCameraInput(float deltaTime) {
-    Camera& camera = scene.GetCamera();
+    Camera& camera = mworld.GetCamera();
     
     // Traiter le clavier (déplacement)
     camera.ProcessKeyboard(deltaTime);
@@ -114,7 +146,7 @@ void App::HandleInputCommand(){
 
     // Basculer le mode caméra avec C
     if (Keyboard::IsKeyPressed(KeyCode::C)) {
-        Camera& camera = scene.GetCamera();
+        Camera& camera = mworld.GetCamera();
         camera.ToggleMode();
         
         if (camera.GetMode() == CameraMode::FREE_FLY) {
@@ -123,15 +155,33 @@ void App::HandleInputCommand(){
             std::cout << "🚶 Mode caméra: MARCHE AU SOL" << std::endl;
         }
     }
+
+    // Désactiver/Activer le lighting
+    if (Keyboard::IsKeyPressed(KeyCode::L))
+    {
+        bool currentState = renderer3d->IsDynamicLightingEnabled();
+        renderer3d->SetDynamicLighting(!currentState);
+        std::cout << "💡 Éclairage dynamique " << (renderer3d->IsDynamicLightingEnabled() ? "activé" : "désactivé") << std::endl;
+    }
+
+    if (Keyboard::IsKeyPressed(KeyCode::F1)) {
+        ui->ToggleKeyboardShortcutsMenu();
+        std::cout << " Menu raccourcis: " << (ui->IsKeyboardShortcutsMenuVisible() ? "Ouvert" : "Fermé") << std::endl;
+    }
+    if (Keyboard::IsKeyPressed(KeyCode::F2)) {
+        ui->ToggleSceneManagerMenu();
+        std::cout << " Menu scènes: " << (ui->IsSceneManagerMenuVisible() ? "Ouvert" : "Fermé") << std::endl;
+    }
 }
 
 // rendu de la scène
 void App::Render(){
     window.ClearWindow();
     renderer3d->Clear(Vector3(0.1f, 0.1f, 0.1f)); // Couleur de fond gris foncé
-    renderer3d->RenderScene(scene);
+    renderer3d->RenderScene(mworld);
     renderer3d->Present();
-    //window.Present();
+    ui->Render();
+    window.Present();
 }
 
 //sortie de la boucle principale

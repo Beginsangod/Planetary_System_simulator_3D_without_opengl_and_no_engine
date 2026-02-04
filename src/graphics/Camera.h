@@ -15,21 +15,21 @@ class Camera {
         float far;
         Transform transform;
         float moveSpeed;
-        float sprintMultiplier;  // NOUVEAU : multiplicateur de vitesse en sprint
+        float sprintMultiplier;  // multiplicateur de vitesse en sprint
         float mouseSensibility;
         float yaw; // Rotation horizontale (en radians)
         float pitch; // Rotation verticale (en radians)
         float zoomSpeed; // Vitesse de zoom
         
-        // NOUVEAU : Mode caméra et hauteur au sol
+        // Mode caméra et hauteur au sol
         CameraMode mode;
         float groundHeight;  // Hauteur par défaut au-dessus du sol en mode GROUND_WALK
 
     public:
         Camera();
 
-        Matrice4 GetViewMatrix();
-        Matrice4 GetProjectionMatrix();
+        Matrice4 GetViewMatrix() const;
+        Matrice4 GetProjectionMatrix() const;
         void LookAt(Object3D obj);
 
         // Méthodes pour déplacer la caméra

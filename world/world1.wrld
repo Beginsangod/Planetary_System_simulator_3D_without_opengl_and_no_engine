@@ -1,0 +1,4 @@
+World {
+    Star(pos(0,0,60), 12.0f, 10.0f, 50.0f, 5000k)
+    Planet(pos(10,0, 30), color(0.0f, 1.0f, 0.2f), RotSpeed(5, 6, 8),8, 9.0f, 30)
+}

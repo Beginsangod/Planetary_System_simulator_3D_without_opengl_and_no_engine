@@ -1,8 +1,6 @@
 #include "Renderer3d.h"
 #include <algorithm>
 
-using namespace std;
-
 // Initialisation des buffers de rendu(en charge de stocker les pixels et la profondeur)
 void Renderer3d::InitializeBuffers() {
     framebuffer.resize(width * height, 0);
@@ -21,26 +19,44 @@ void Renderer3d::Clear(const Vector3& color) {
 }
 
 // Rendu de la scène 3D complète
-void Renderer3d::RenderScene(Scene scene) {
-    Camera cam = scene._Camera();
+void Renderer3d::RenderScene(Scene& scene) {
+    const Camera& cam = scene._Camera();  // ✅ FIXED: Utiliser const reference au lieu de copie
 
     Matrice4 viewMatrix = cam.GetViewMatrix();
     Matrice4 projectionMatrix = cam.GetProjectionMatrix();
+    
+    // Collection des sources lumineuses à partir des objets émissifs
+    lights.clear();
+    
+    for (const auto& object : scene.getObjects()) {
+        const Material& mat = object->GetMaterial();  // ✅ FIXED: const reference
+        if (mat.isEmissive && mat.emissiveIntensity > 0.0f) {
+            // Cet objet est une source lumineuse
+            LightSource light(
+                object->transform.position,
+                mat.emissiveColor,
+                mat.emissiveIntensity,
+                50.0f  // Rayon d'influence par défaut
+            );
+            lights.push_back(light);
+        }
+    }
 
-    for (const Object3D& object : scene.getObjects()) {
-        Matrice4 modelMatrix = object.transform.GetMatrix();
+    // Collecte des Objets 3D et rendu
+    for (const auto& object : scene.getObjects()) {
+        Matrice4 modelMatrix = object->transform.GetMatrix();
         
-        DrawObject(object, modelMatrix, viewMatrix, projectionMatrix);
+        DrawObject(*object, modelMatrix, viewMatrix, projectionMatrix);
     }
 }
 
 // Dessin d'un objet 3D spécifique en utilisant la matrice MVP
 void Renderer3d::DrawObject(const Object3D& obj, Matrice4 Model, Matrice4 View, Matrice4 Proj) {
-    DrawMesh(obj.mesh, Model, View, Proj);
+    DrawMesh(obj.mesh, obj.material, Model, View, Proj);
 }
 
 // Dessin d'un mesh en transformant et rasterisant ses triangles
-void Renderer3d::DrawMesh(const Mesh& mesh, const Matrice4& Model, const Matrice4& View, const Matrice4& Proj) {
+void Renderer3d::DrawMesh(const Mesh& mesh, const Material& material, const Matrice4& Model, const Matrice4& View, const Matrice4& Proj) {
     // Calculer MVP UNE SEULE FOIS pour tout le mesh
     Matrice4 MV = Model * View;
     Matrice4 MVP = MV * Proj;
@@ -48,6 +64,12 @@ void Renderer3d::DrawMesh(const Mesh& mesh, const Matrice4& Model, const Matrice
     // Transformer tous les vertices avec la même matrice
     for (size_t i = 0; i < mesh.indices.size(); i += 3) {
         VertexTransformed v0, v1, v2; 
+
+        // Calculer les positions world des vertices
+        Vector3 worldPos0 = Model.TransformPoint(mesh.vertices[mesh.indices[i]].position);
+        Vector3 worldPos1 = Model.TransformPoint(mesh.vertices[mesh.indices[i + 1]].position);
+        Vector3 worldPos2 = Model.TransformPoint(mesh.vertices[mesh.indices[i + 2]].position);
+
         TransformVertex(mesh.vertices[mesh.indices[i]], v0, MVP, MV);
         TransformVertex(mesh.vertices[mesh.indices[i + 1]], v1, MVP, MV);
         TransformVertex(mesh.vertices[mesh.indices[i + 2]], v2, MVP, MV);
@@ -57,7 +79,7 @@ void Renderer3d::DrawMesh(const Mesh& mesh, const Matrice4& Model, const Matrice
             if (std::abs(area) > 0.0001f) {
                 switch (renderMode) {
                     case RenderMode::FILLED:
-                        RasterizeTriangle(v0, v1, v2, area > 0);
+                        RasterizeTriangle(v0, v1, v2, area > 0, material, worldPos0, worldPos1, worldPos2);
                         break;
                     
                     case RenderMode::WIREFRAME:
@@ -105,7 +127,7 @@ void Renderer3d::TransformVertex(const Vertex& inVertex, VertexTransformed& outV
     outVertex.screenCoord.y = (1.0f - clipPos.y * outVertex.invW) * 0.5f * height;
     outVertex.depth = clipPos.z * outVertex.invW;
     
-    // Couleur
+    // Couleur - on garde celle des vertices pour compatibilité (peut servir pour vertex painting)
     outVertex.color = inVertex.color;
     
     // Normale en espace vue
@@ -121,10 +143,8 @@ float Renderer3d::Trianglecheck(const VertexTransformed& v0, const VertexTransfo
            (v2.screenCoord.x - v0.screenCoord.x) * (v1.screenCoord.y - v0.screenCoord.y);
 }
 
-void Renderer3d::RasterizeTriangle(const VertexTransformed& v0, const VertexTransformed& v1, const VertexTransformed& v2, bool isFrontFacing) {
-    if (isFrontFacing) {
-        return;
-    }
+void Renderer3d::RasterizeTriangle(const VertexTransformed& v0, const VertexTransformed& v1, const VertexTransformed& v2, bool isFrontFacing, const Material& material, const Vector3& worldPos0, const Vector3& worldPos1, const Vector3& worldPos2) {
+    if (isFrontFacing) return;
 
     int minX, minY, maxX, maxY;
     BoundBox(v0, v1, v2, minX, minY, maxX, maxY);
@@ -132,30 +152,47 @@ void Renderer3d::RasterizeTriangle(const VertexTransformed& v0, const VertexTran
     for (int y = minY; y <= maxY; y++) {
         for (int x = minX; x <= maxX; x++) {
             Vector2 pixel(x + 0.5f, y + 0.5f);
-
             if (isInTriangle(pixel, v0, v1, v2)) {
                 Vector3 bary = BarycentricCoordinates(pixel, v0, v1, v2);
                 float depth = bary.x * v0.depth + bary.y * v1.depth + bary.z * v2.depth;
 
                 if (DepthTest(pixel, depth)) {
-                    Vector3 colorOverW = (v0.color * v0.invW) * bary.x +
-                                        (v1.color * v1.invW) * bary.y +
-                                        (v2.color * v2.invW) * bary.z;
-
+                    // ✅ FIXED: Utiliser material.albedoColor au lieu des vertex colors pour la couleur de base
+                    // Les vertex colors peuvent toujours moduler la couleur si nécessaire
+                    Vector3 vertexColor = (v0.color * v0.invW) * bary.x + 
+                                         (v1.color * v1.invW) * bary.y + 
+                                         (v2.color * v2.invW) * bary.z;
+                    
                     float invW = v0.invW * bary.x + v1.invW * bary.y + v2.invW * bary.z;
-                    Vector3 color = colorOverW * (1.0f / invW);
+                    vertexColor = vertexColor * (1.0f / invW);
+                    
+                    // ✅ FIXED: Utiliser la couleur du material comme couleur de base
+                    Vector3 baseColor = material.albedoColor;
+                    
+                    // Option: moduler avec les vertex colors (utile pour vertex painting)
+                    // baseColor = baseColor * vertexColor;
 
-                    Vector3 normalOverW = v0.normal_over_w * bary.x +
-                                         v1.normal_over_w * bary.y +
-                                         v2.normal_over_w * bary.z;
+                    // Interpoler la normale
+                    Vector3 normalOverW = v0.normal_over_w * bary.x + v1.normal_over_w * bary.y + v2.normal_over_w * bary.z;
 
                     Vector3 normal = (normalOverW * (1.0f / invW)).Normalisation();
-
-                    Vector3 lightDir = Vector3(0.0f, 0.0f, -1.0f).Normalisation();
-                    float intensity = std::max(0.2f, -normal.Dot(lightDir));
-
-                    Vector3 finalColor = color * intensity;
-
+                    Vector3 worldPosition = worldPos0 * bary.x + worldPos1 * bary.y + worldPos2 * bary.z;
+                    Vector3 finalColor;
+                    
+                    if (material.isEmissive && material.emissiveIntensity > 0.0f) {
+                        // Objet émissif : brille sans recevoir d'éclairage
+                        finalColor = material.emissiveColor * material.emissiveIntensity;
+                    } else {
+                        // Objet normal : calculer l'éclairage dynamique
+                        if (dynamicLightingEnabled && !lights.empty()) {
+                            finalColor = CalculateDynamicLighting(worldPosition, normal, baseColor);
+                        } else {
+                            // Fallback : éclairage directionnel simple
+                            Vector3 lightDir = Vector3(0.0f, 1.0f, 0.0f).Normalisation();  // ✅ FIXED: lumière du haut
+                            float intensity = std::max(0.3f, normal.Dot(lightDir));  // ✅ FIXED: enlevé le signe négatif
+                            finalColor = baseColor * intensity;
+                        }
+                    }
                     WritePixel(pixel, finalColor);
                 }
             }
@@ -168,19 +205,19 @@ void Renderer3d::BoundBox(const VertexTransformed& v0, const VertexTransformed& 
     minY = std::floor(std::min({ static_cast<int>(v0.screenCoord.y), static_cast<int>(v1.screenCoord.y), static_cast<int>(v2.screenCoord.y) }));
     maxX = std::ceil(std::max({ static_cast<int>(v0.screenCoord.x), static_cast<int>(v1.screenCoord.x), static_cast<int>(v2.screenCoord.x) }));
     maxY = std::ceil(std::max({ static_cast<int>(v0.screenCoord.y), static_cast<int>(v1.screenCoord.y), static_cast<int>(v2.screenCoord.y) }));
-
-    minX = std::max(minX, 0);
-    minY = std::max(minY, 0);
-    maxX = std::min(maxX, width - 1);
-    maxY = std::min(maxY, height - 1);
+    
+    minX = std::max(0, minX);
+    minY = std::max(0, minY);
+    maxX = std::min(width - 1, maxX);
+    maxY = std::min(height - 1, maxY);
 }
 
 bool Renderer3d::isInTriangle(const Vector2& p, const VertexTransformed& v0, const VertexTransformed& v1, const VertexTransformed& v2) {
     Vector3 bary = BarycentricCoordinates(p, v0, v1, v2);
-    return (bary.x >= 0) && (bary.y >= 0) && (bary.z >= 0);
+    return (bary.x >= 0.0f && bary.y >= 0.0f && bary.z >= 0.0f);
 }
 
-inline Vector3 Renderer3d::BarycentricCoordinates(const Vector2& p, const VertexTransformed& v0, const VertexTransformed& v1, const VertexTransformed& v2) {
+Vector3 Renderer3d::BarycentricCoordinates(const Vector2& p, const VertexTransformed& v0, const VertexTransformed& v1, const VertexTransformed& v2) {
     const float dx1 = v1.screenCoord.x - v0.screenCoord.x;
     const float dy1 = v1.screenCoord.y - v0.screenCoord.y;
     const float dx2 = v2.screenCoord.x - v0.screenCoord.x;
@@ -327,5 +364,53 @@ void Renderer3d::DrawPoint(const VertexTransformed& v, const Vector3& color, int
 void Renderer3d::Present() {
     SDL_UpdateTexture( texture, nullptr, framebuffer.data(), width * 4 );
     SDL_RenderTexture(renderer, texture, nullptr, nullptr);
-    SDL_RenderPresent(renderer);
+}
+
+// Calcul de l'éclairage dynamique pour un point donné
+Vector3 Renderer3d::CalculateDynamicLighting( const Vector3& worldPosition, const Vector3& normal, const Vector3& baseColor) {
+    // Lumière ambiante (éclairage minimal de base)
+    Vector3 ambientLight = Vector3(0.1f, 0.1f, 0.1f);
+    Vector3 totalLight = ambientLight;
+    
+    // Limiter le nombre de lumières pour les performances
+    int lightCount = 0;
+    int maxLights = std::min(maxActiveLights, (int)lights.size());
+    
+    // Parcourir toutes les lumières de la scène
+    for (int i = 0; i < lights.size() && lightCount < maxLights; ++i) {
+        const LightSource& light = lights[i];
+        
+        // Direction vers la lumière
+        Vector3 toLight = light.position - worldPosition;
+        float distance = toLight.Magnitude();
+        // Optimisation : ignorer les lumières trop loin
+        if (distance > light.radius) {
+            continue;
+        }
+        
+        lightCount++;
+        
+        // Normaliser la direction
+        Vector3 lightDir = toLight.Normalisation();
+        
+        // Calcul du diffuse (Lambert)
+        // dot(normal, lightDir) donne un nombre entre -1 et 1
+        // On garde seulement les valeurs positives (surfaces éclairées)
+        float diffuseFactor = std::max(0.0f, normal.Dot(lightDir));   
+        // Calculer l'atténuation (la lumière diminue avec la distance)
+        float attenuation = light.CalculateAttenuation(distance);  
+        // Contribution de cette lumière
+        Vector3 lightContribution = light.color * light.intensity * diffuseFactor * attenuation;      
+        // Ajouter au total
+        totalLight += lightContribution;
+    }
+    
+    // Appliquer l'éclairage total à la couleur de base de l'objet
+    Vector3 finalColor = baseColor * totalLight;
+    // Clamper pour éviter les valeurs > 1.0 (saturation)
+    finalColor.x = std::min(finalColor.x, 1.0f);
+    finalColor.y = std::min(finalColor.y, 1.0f);
+    finalColor.z = std::min(finalColor.z, 1.0f);
+    
+    return finalColor;
 }
