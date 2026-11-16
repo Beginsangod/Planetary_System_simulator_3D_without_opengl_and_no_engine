@@ -7,7 +7,7 @@ class Astre: public Object3D {
         float mass;
         float radius;
         Vector3 velocity = Vector3::Zero;
-        Vector3 acceleration;
+        Vector3 acceleration = Vector3::Zero;
 
         Astre(const Vector3& position , float mass, float radius, const Vector3& color, const Vector3& initialVelocity) : Object3D(position), mass(mass), radius(radius), velocity(initialVelocity) {
             mesh = MeshBuilder::CreateSphere(radius, 32, 64, color);

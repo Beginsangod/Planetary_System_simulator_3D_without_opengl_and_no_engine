@@ -2,7 +2,6 @@
 #include <vector>
 #include <memory>
 #include "../core/math/Vector2.h"
-#include "../core/math/Vector3.h"
 #include "../core/math/Matrice4x4.h"
 #include "Material.h"
 

@@ -1,7 +1,6 @@
 #include "MotorPhysics.h"
 
-void MotorPhysics::Update(float fdeltaTime){
-    float deltaTime = fdeltaTime * 2;
+void MotorPhysics::Update(float deltaTime) {
     // Récupération des Astres de la scène 
     std::vector<Astre*> allAstres;
 
@@ -12,11 +11,6 @@ void MotorPhysics::Update(float fdeltaTime){
     int countastre = allAstres.size(); // Compter les Astres de la scène
     if (countastre < 2) return; // Pas de calcul si moins de 2 Astres
     float eps2 = epsoftening * epsoftening;
-
-    // Mise à 0 de l'accélération de tout les Astres
-    for (auto& Astre : allAstres) {
-        Astre->acceleration = Vector3(0, 0, 0);
-    }
 
     for(int i = 0; i < countastre; i++){
         for (int j = i + 1; j < countastre; j++)

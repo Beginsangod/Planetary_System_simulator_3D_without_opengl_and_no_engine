@@ -92,7 +92,7 @@ void App::Run(){
         }
 
         // Calcul du moteur physique
-        motorPhysics->Update(deltaTime);
+        motorPhysics->Update(deltaTime * 5);
 
         // Gérer les inputs de la caméra
         HandleCameraInput(deltaTime);  

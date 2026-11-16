@@ -1,0 +1,105 @@
+with workspace("Planetary_System_simulator_3D_without_opengl_and_no_engine>"):
+    # Configuration globale
+    configurations(["Debug", "Release"])
+    platforms(["Windows", "Linux"])
+    startproject("MainApp")
+
+    with toolchain("default", "clang++"):
+        cppcompiler("clang++")
+        cppdialect("C++17")
+        cflags(["-Wall", "Wextra"])
+
+    #Bibliothèque event
+    with project("Event"):
+        staticlib()
+        location("/src/core")
+
+        files(["event/**.cpp"])
+        includedirs(["event"])
+        objdir("Build/Obj/%{cfg.buildcfg}/%{prj.name}")
+        targetdir("Build/Lib/%{cfg.buildcfg}")
+
+    #Bibliothèque Math
+    with project("Math"):
+        staticlib()
+        location("/src/core")
+
+        files(["math/**.cpp"])
+        includedirs(["math"])
+        objdir("Build/Obj/%{cfg.buildcfg}/%{prj.name}")
+        targetdir("Build/Lib/%{cfg.buildcfg}")
+
+    #Bibliothèque Render3D
+    with project("Render3D"):
+        staticlib()
+        location("/src")
+
+        files(["graphics/**.cpp"])
+        dependson(["Math, Event"])
+        includedirs(["graphics"])
+        objdir("Build/Obj/%{cfg.buildcfg}/%{prj.name}")
+        targetdir("Build/Lib/%{cfg.buildcfg}")
+
+    #Bibliothèque Physics
+    with project("Physic"):
+        staticlib()
+        location("/src")
+
+        files(["physics/**.cpp"])
+        dependson(["Render3D"])
+        includedirs(["physics"])
+        objdir("Build/Obj/%{cfg.buildcfg}/%{prj.name}")
+        targetdir("Build/Lib/%{cfg.buildcfg}")
+
+    #Bibliothèque Simulation Manager
+    with project("Manager"):
+        staticlib()
+        location("/src")
+
+        files(["Simulation/**.cpp"])
+        dependson(["Physic"])
+        includedirs(["Simulation"])
+        objdir("Build/Obj/%{cfg.buildcfg}/%{prj.name}")
+        targetdir("Build/Lib/%{cfg.buildcfg}")
+
+    #Bibliothèque core
+    with project("Core"):
+        staticlib()
+        location("/src")
+
+        files(["core/**.cpp"])
+        dependson(["Manager"])
+        includedirs(["core"])
+        objdir("Build/Obj/%{cfg.buildcfg}/%{prj.name}")
+        targetdir("Build/Lib/%{cfg.buildcfg}")
+
+    #Entrée du Programme
+    with project("MainApp"):
+        windowedapp()
+        files(["src/**.cpp"])
+        
+        dependson(["Core"])
+        includedirs([
+            "ThirdParty",
+            "ThirdParty/backends",
+            "C:/msys64/mingw64/include",
+            "."
+        ])
+
+        with filter("system:Windows"):
+            links([
+                "lSDL3",
+                "limm32",
+                "loleaut32",
+                "mconsole"
+            ])
+
+        with filter("system:Linux"):
+            links([
+                "lSDL3",
+                "ldl",
+                "lpthread"
+            ])
+
+        objdir("Build/Obj/%{cfg.buildcfg}/%{prj.name}")
+        targetdir("Build/Lib/%{cfg.buildcfg}")

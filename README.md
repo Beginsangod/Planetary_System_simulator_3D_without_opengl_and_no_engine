@@ -141,6 +141,8 @@ Planetary_System_simulator_3D_without_opengl_and_no_engine/
 ```
 #### Syntaxe des Fichiers world
 
+**Consulter GUIDE_SYSTEM_EXOPLANETAIRES.md** dans le dossier world pour les conversions de masse et distance
+
 ```txt 
 
 // pos() donner une position à vos éléments
@@ -152,7 +154,7 @@ Planetary_System_simulator_3D_without_opengl_and_no_engine/
 World {
     // méthode de création de planetes 
     Star(mass, radius, luminosity, temperature, pos(x, y, z), color(x, y, z))
-    Planete(mass, radius, AxialTilt, pos(x, y, z), color(x, y, z), RotSpeed(x, y, z))
+    Planet(mass, radius, AxialTilt, pos(x, y, z), color(x, y, z), RotSpeed(x, y, z))
     Satellite(mass, radius, pos(x, y, z), color(x, y, z))
 
     // méthode de création d'objet 3D uniquement accessible par les fichiers .wrld

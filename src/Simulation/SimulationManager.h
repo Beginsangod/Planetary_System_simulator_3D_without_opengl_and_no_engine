@@ -1,8 +1,5 @@
 #pragma once
-#include "../core/math/Vector3.h"
 #include "../physics/world.h"
-#include <string>
-#include <vector>
 #include <unordered_map>
 #include <variant>
 #include <fstream>
